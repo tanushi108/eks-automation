@@ -1,0 +1,13 @@
+---
+aws_region: ap-south-1
+
+eks_cluster_name: devops-eks-cluster
+
+eks_kubernetes_version: "1.35"
+
+node_instance_type: t3.small
+node_min_size: 1
+node_desired_size: 1
+node_max_size: 2
+
+eksctl_config: "{{ playbook_dir }}/eks-cluster.yaml"

@@ -1,0 +1,7 @@
+aws_region: ap-south-1
+
+eks_cluster_name: devops-eks-cluster
+
+kubernetes_namespace: devops-app
+
+eksctl_config: "./eks-cluster.yaml"
