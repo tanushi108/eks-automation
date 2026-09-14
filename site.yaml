@@ -1,0 +1,8 @@
+---
+- name: EKS Cluster Automation
+  hosts: local
+  connection: local
+  gather_facts: false
+
+  roles:
+    - eks
