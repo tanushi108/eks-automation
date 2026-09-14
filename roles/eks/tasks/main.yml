@@ -1,20 +1,14 @@
 ---
-
-# ---------------------------------------------------------
-# 1. Validate operation
-# ---------------------------------------------------------
+# Validate operation
 
 - name: Validate operation
   ansible.builtin.assert:
     that:
       - operation in ['create', 'verify', 'destroy']
     fail_msg: "Invalid operation '{{ operation }}'. Use create, verify, or destroy."
-    success_msg: "Operation '{{ operation }}' is valid."
 
 
-# ---------------------------------------------------------
-# 2. Validate AWS access
-# ---------------------------------------------------------
+# Check AWS access
 
 - name: Check AWS identity
   ansible.builtin.command:
@@ -22,17 +16,10 @@
       - aws
       - sts
       - get-caller-identity
-  register: aws_identity
   changed_when: false
 
-- name: Display AWS identity
-  ansible.builtin.debug:
-    msg: "{{ aws_identity.stdout }}"
 
-
-# ---------------------------------------------------------
-# 3. Check whether EKS cluster already exists
-# ---------------------------------------------------------
+# Check whether cluster exists
 
 - name: Check EKS clusters
   ansible.builtin.command:
@@ -55,14 +42,8 @@
         ((cluster_check.stdout | from_json).clusters | default([]))
       }}
 
-- name: Display cluster status
-  ansible.builtin.debug:
-    msg: "EKS cluster '{{ eks_cluster_name }}' exists: {{ cluster_exists }}"
 
-
-# ---------------------------------------------------------
-# 4. CREATE
-# ---------------------------------------------------------
+# CREATE
 
 - name: Generate eksctl configuration
   ansible.builtin.template:
@@ -85,7 +66,7 @@
     - operation == "create"
     - not cluster_exists
 
-- name: Update kubeconfig after cluster creation
+- name: Update kubeconfig
   ansible.builtin.command:
     argv:
       - aws
@@ -111,68 +92,39 @@
     - operation == "create"
     - not cluster_exists
 
-- name: Display Kubernetes nodes
-  ansible.builtin.debug:
-    var: kubectl_nodes.stdout
-  when:
-    - operation == "create"
-    - not cluster_exists
 
+# VERIFY
 
-# ---------------------------------------------------------
-# 5. VERIFY
-# ---------------------------------------------------------
+# VERIFY
 
-- name: Update kubeconfig for verification
+- name: Verify EKS cluster
   ansible.builtin.command:
     argv:
       - aws
       - eks
-      - update-kubeconfig
-      - --region
-      - "{{ aws_region }}"
+      - describe-cluster
       - --name
       - "{{ eks_cluster_name }}"
-  when:
-    - operation == "verify"
-    - cluster_exists
-
-- name: Get Kubernetes nodes
-  ansible.builtin.command:
-    cmd: kubectl get nodes -o wide
-  register: verify_nodes
+      - --region
+      - "{{ aws_region }}"
+      - --query
+      - "cluster.{Name:name,Status:status,Version:version}"
+      - --output
+      - table
+  register: cluster_status
   changed_when: false
   when:
     - operation == "verify"
     - cluster_exists
 
-- name: Display Kubernetes nodes
+- name: Display cluster status
   ansible.builtin.debug:
-    var: verify_nodes.stdout
+    var: cluster_status.stdout
   when:
     - operation == "verify"
     - cluster_exists
 
-- name: Get all Kubernetes pods
-  ansible.builtin.command:
-    cmd: kubectl get pods -A
-  register: verify_pods
-  changed_when: false
-  when:
-    - operation == "verify"
-    - cluster_exists
-
-- name: Display Kubernetes pods
-  ansible.builtin.debug:
-    var: verify_pods.stdout
-  when:
-    - operation == "verify"
-    - cluster_exists
-
-
-# ---------------------------------------------------------
-# 6. DESTROY
-# ---------------------------------------------------------
+# DESTROY
 
 - name: Delete EKS cluster
   ansible.builtin.command:
@@ -203,11 +155,4 @@
   changed_when: false
   when:
     - operation == "destroy"
-
-- name: Display remaining EKS clusters
-  ansible.builtin.debug:
-    msg: >-
-      Remaining EKS clusters:
-      {{ (remaining_clusters.stdout | from_json).clusters | default([]) }}
-  when:
-    - operation == "destroy"
+    - cluster_exists
