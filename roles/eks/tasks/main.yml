@@ -1,21 +1,4 @@
 ---
-# ---------------------------------------------------------
-# 0. Get cluster name from user
-# ---------------------------------------------------------
-
-- name: Ask for EKS cluster name
-  ansible.builtin.pause:
-    prompt: "Enter EKS cluster name"
-  register: cluster_name_input
-
-- name: Set cluster name
-  ansible.builtin.set_fact:
-    eks_cluster_name: "{{ cluster_name_input.user_input | trim }}"
-
-- name: Display cluster name
-  ansible.builtin.debug:
-    msg: "EKS cluster name: {{ eks_cluster_name }}"
-
 
 # ---------------------------------------------------------
 # 1. Validate operation
